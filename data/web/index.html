@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dehydrator</title>
+<style>
+  :root {
+    --bg: #14110f; --card: #201b18; --line: #352d28;
+    --ink: #f2ede9; --muted: #a2948b; --hot: #e2703a; --cool: #4a8fa8;
+    --ok: #7ba05b; --bad: #c8452f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 14px; background: var(--bg); color: var(--ink);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  h1 { font-size: 17px; margin: 0 0 2px; letter-spacing: .01em; }
+  .sub { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+          padding: 13px; margin-bottom: 12px; }
+  .card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em;
+             color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .cell { background: #191413; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+  .cell .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase;
+               letter-spacing: .06em; }
+  .big { font-size: 27px; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .unit { font-size: 13px; color: var(--muted); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .pill { padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 600;
+          border: 1px solid var(--line); background: #191413; color: var(--muted); }
+  .pill.on { background: var(--hot); border-color: var(--hot); color: #14110f; }
+  .pill.fan.on { background: var(--cool); border-color: var(--cool); color: #14110f; }
+  .state { font-size: 20px; font-weight: 700; }
+  button { font: inherit; font-weight: 600; padding: 9px 14px; border-radius: 8px;
+           border: 1px solid var(--line); background: #2b2320; color: var(--ink); cursor: pointer; }
+  button.primary { background: var(--hot); border-color: var(--hot); color: #14110f; }
+  button.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+  button:disabled { opacity: .45; cursor: default; }
+  input { font: inherit; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--line);
+          background: #191413; color: var(--ink); min-width: 0; }
+  input[type=number] { width: 92px; }
+  .banner { display: none; background: var(--bad); color: #fff; padding: 11px 13px;
+            border-radius: 8px; margin-bottom: 12px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td { padding: 7px 0; border-bottom: 1px solid var(--line); }
+  td:last-child { text-align: right; }
+  a { color: var(--cool); }
+  .foot { color: var(--muted); font-size: 11px; text-align: center; margin-top: 16px; }
+  .stale { opacity: .45; }
+</style>
+</head>
+<body>
+
+<h1>Food dehydrator</h1>
+<div class="sub" id="sub">connecting&hellip;</div>
+
+<div class="banner" id="banner"></div>
+
+<div class="card">
+  <h2>Cabinet</h2>
+  <div class="grid">
+    <div class="cell">
+      <div class="lbl">Bottom &middot; inlet</div>
+      <div class="big"><span id="tbot">--</span><span class="unit"> &deg;C</span></div>
+      <div class="unit"><span id="rhbot">--</span> %RH &middot; <span id="ahbot">--</span> g/m&sup3;</div>
+    </div>
+    <div class="cell">
+      <div class="lbl">Top &middot; exhaust</div>
+      <div class="big"><span id="ttop">--</span><span class="unit"> &deg;C</span></div>
+      <div class="unit"><span id="rhtop">--</span> %RH &middot; <span id="ahtop">--</span> g/m&sup3;</div>
+    </div>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <span class="pill" id="p-heater">heater</span>
+    <span class="pill fan" id="p-fanin">intake fans</span>
+    <span class="pill fan" id="p-fanup">stack fan</span>
+  </div>
+  <div class="unit" style="margin-top:8px">
+    moisture removal &Delta;AH <span id="dah">--</span> g/m&sup3;
+  </div>
+</div>
+
+<div class="card">
+  <h2>Run</h2>
+  <div class="state" id="state">--</div>
+  <div class="unit" id="sessionline" style="margin-bottom:11px">no session</div>
+  <div class="row">
+    <input id="label" placeholder="product, e.g. лууван" style="flex:1">
+    <button class="primary" id="btn-start">Start</button>
+    <button id="btn-stop">Stop</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Setpoint</h2>
+  <div class="row">
+    <input type="number" id="setpoint" step="0.5" min="20" max="60">
+    <span class="unit">&deg;C &nbsp;band</span>
+    <input type="number" id="hyst" step="0.1" min="0.2" max="10">
+    <span class="unit">&deg;C</span>
+    <button id="btn-cfg">Save</button>
+  </div>
+  <div class="unit" id="bandline" style="margin-top:8px"></div>
+</div>
+
+<div class="card">
+  <h2>Logs</h2>
+  <table id="logs"><tbody></tbody></table>
+  <div class="unit" id="fsline" style="margin-top:8px"></div>
+</div>
+
+<div class="foot">
+  Thermal fuse is the safety device. Firmware protection is the second line, not the first.
+</div>
+
+<script>
+var lastOk = 0;
+
+function post(url, obj) {
+  return fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: new URLSearchParams(obj || {})
+  });
+}
+function num(v, d) { return (v === null || v === undefined) ? '--' : Number(v).toFixed(d); }
+function pill(el, on) { el.classList.toggle('on', !!on); }
+
+function paint(s) {
+  document.getElementById('tbot').textContent = num(s.t_bot, 1);
+  document.getElementById('rhbot').textContent = num(s.rh_bot, 1);
+  document.getElementById('ahbot').textContent = num(s.ah_bot, 2);
+  document.getElementById('ttop').textContent = num(s.t_top, 1);
+  document.getElementById('rhtop').textContent = num(s.rh_top, 1);
+  document.getElementById('ahtop').textContent = num(s.ah_top, 2);
+
+  var dah = (s.ah_top !== null && s.ah_bot !== null) ? (s.ah_top - s.ah_bot) : null;
+  document.getElementById('dah').textContent = dah === null ? '--' : (dah >= 0 ? '+' : '') + dah.toFixed(2);
+
+  pill(document.getElementById('p-heater'), s.heater);
+  pill(document.getElementById('p-fanin'), s.fan_in);
+  pill(document.getElementById('p-fanup'), s.fan_up);
+
+  document.getElementById('state').textContent = s.state;
+
+  var el = 0;
+  if (s.session) el = s.session.elapsed_s || 0;
+  var hh = Math.floor(el / 3600), mm = Math.floor((el % 3600) / 60);
+  document.getElementById('sessionline').textContent =
+    (s.session && s.session.id)
+      ? ('#' + s.session.id + ' ' + (s.session.label || '(no label)') + ' · ' + hh + 'h ' + mm + 'm'
+         + (s.session.active ? '' : ' · finished'))
+      : 'no session';
+
+  var b = document.getElementById('banner');
+  if (s.fault_latched) {
+    b.style.display = 'block';
+    b.innerHTML = 'FAULT: ' + s.fault +
+      ' &nbsp; <button class="danger" onclick="resetFault()">Reset</button>';
+  } else {
+    b.style.display = 'none';
+  }
+
+  var sp = document.getElementById('setpoint');
+  if (document.activeElement !== sp) sp.value = s.setpoint;
+  document.getElementById('bandline').textContent =
+    'heater on below ' + (s.setpoint - hystVal() / 2).toFixed(1) +
+    ' °C, off above ' + (s.setpoint + hystVal() / 2).toFixed(1) + ' °C';
+
+  document.getElementById('sub').textContent =
+    'mode ' + s.mode + ' · up ' + Math.floor(s.uptime_s / 60) + ' min' +
+    (s.time_known ? '' : ' · clock not set') +
+    (s.sim_speed > 1 ? ' · sim ×' + s.sim_speed : '');
+  document.body.classList.remove('stale');
+}
+
+function hystVal() { return parseFloat(document.getElementById('hyst').value) || 1; }
+
+function tick() {
+  fetch('/api/status').then(function (r) { return r.json(); }).then(function (s) {
+    lastOk = Date.now();
+    paint(s);
+  }).catch(function () {
+    if (Date.now() - lastOk > 6000) document.body.classList.add('stale');
+  });
+}
+
+function loadCfg() {
+  fetch('/api/config').then(function (r) { return r.json(); }).then(function (c) {
+    document.getElementById('setpoint').value = c.setpoint;
+    document.getElementById('hyst').value = c.hyst;
+  });
+}
+
+function loadLogs() {
+  fetch('/api/logs').then(function (r) { return r.json(); }).then(function (d) {
+    var tb = document.querySelector('#logs tbody');
+    tb.innerHTML = '';
+    (d.files || []).forEach(function (f) {
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td><a href="/logs/' + f.name + '" download>' + f.name + '</a></td>' +
+        '<td>' + (f.size / 1024).toFixed(0) + ' kB &nbsp; ' +
+        '<a href="#" data-f="' + f.name + '" class="del">delete</a></td>';
+      tb.appendChild(tr);
+    });
+    tb.querySelectorAll('.del').forEach(function (a) {
+      a.onclick = function (e) {
+        e.preventDefault();
+        if (!confirm('Delete ' + a.dataset.f + '?')) return;
+        post('/api/logs/delete', {file: a.dataset.f}).then(loadLogs);
+      };
+    });
+    if (d.fs_total) {
+      document.getElementById('fsline').textContent =
+        (d.fs_used / 1024).toFixed(0) + ' / ' + (d.fs_total / 1024).toFixed(0) + ' kB used';
+    }
+  });
+}
+
+function resetFault() { post('/api/fault/reset').then(tick); }
+
+document.getElementById('btn-start').onclick = function () {
+  post('/api/session', {action: 'start', label: document.getElementById('label').value})
+    .then(tick).then(loadLogs);
+};
+document.getElementById('btn-stop').onclick = function () {
+  post('/api/session', {action: 'stop'}).then(tick);
+};
+document.getElementById('btn-cfg').onclick = function () {
+  post('/api/config', {
+    setpoint: document.getElementById('setpoint').value,
+    hyst: document.getElementById('hyst').value
+  }).then(tick);
+};
+
+// No NTP on this AP — hand the ESP32 the browser's clock so the CSV timestamps are real.
+post('/api/time', {epoch: Math.floor(Date.now() / 1000)});
+
+loadCfg();
+loadLogs();
+tick();
+setInterval(tick, 2000);
+setInterval(loadLogs, 30000);
+</script>
+</body>
+</html>

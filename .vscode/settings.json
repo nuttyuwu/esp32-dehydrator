@@ -1,0 +1,22 @@
+{
+  // IntelliSense comes from PlatformIO, not from a hand-written include path.
+  "C_Cpp.default.configurationProvider": "platformio.platformio-ide",
+  "C_Cpp.default.cppStandard": "c++17",
+
+  "platformio-ide.activateOnlyOnPlatformIOProject": true,
+  "platformio-ide.autoRebuildAutocompleteIndex": true,
+  "platformio-ide.disablePIOHomeStartup": true,
+
+  // The ESP-IDF extension also claims .c/.cpp projects and will try to adopt this folder.
+  // Keep it out of the way so the two do not fight over the serial port.
+  "idf.showOnboardingOnInit": false,
+  "idf.flashType": "UART",
+
+  "files.exclude": {
+    "**/.pio": true
+  },
+  "files.associations": {
+    "*.ino": "cpp"
+  },
+  "editor.rulers": [100]
+}
